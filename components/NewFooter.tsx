@@ -1,8 +1,8 @@
 import { Facebook, Instagram, Twitter, Mail, Phone, MapPin } from 'lucide-react';
-import { useApiCart } from '../contexts/ApiCartContext';
+import { useCart } from '../contexts/CartContext';
 
 const Footer = () => {
-  const { setPage } = useApiCart();
+  const { setPage } = useCart();
 
   return (
     <footer className="bg-card border-t border-border mt-16">
@@ -120,3 +120,4 @@ const Footer = () => {
 };
 
 export default Footer;
+

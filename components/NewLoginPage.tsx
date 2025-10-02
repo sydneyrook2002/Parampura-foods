@@ -1,46 +1,17 @@
-import { useState, useEffect } from 'react';
-import { useApiCart } from '../contexts/ApiCartContext';
+import { useState } from 'react';
+import { useCart } from '../contexts/CartContext';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { useToast } from './ui/use-toast';
 
 const LoginPage = () => {
-  const { login, setPage, loading, error, user, clearError } = useApiCart();
-  const { toast } = useToast();
+  const { login, setPage } = useCart();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Clear any existing errors when component mounts
-  useEffect(() => {
-    clearError();
-  }, [clearError]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const success = await login(email, password);
-    if (success) {
-      toast({
-        title: "Login Successful",
-        description: "Welcome back!",
-      });
-      
-      // Use a small delay to ensure user state is updated
-      setTimeout(() => {
-        // Check if admin email pattern
-        if (email.includes('admin')) {
-          setPage('adminDashboard');
-        } else {
-          setPage('home');
-        }
-      }, 100);
-    } else {
-      toast({
-        title: "Login Failed",
-        description: error || "Invalid email or password",
-        variant: "destructive",
-      });
-    }
+    login(email, password);
   };
 
   return (
@@ -69,13 +40,8 @@ const LoginPage = () => {
                 required
               />
             </div>
-            {error && (
-              <div className="text-red-500 text-sm text-center">
-                {error}
-              </div>
-            )}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Signing In...' : 'Sign In'}
+            <Button type="submit" className="w-full">
+              Sign In
             </Button>
           </form>
           <div className="mt-4 text-center">
@@ -98,11 +64,6 @@ const LoginPage = () => {
               Continue as Guest
             </Button>
           </div>
-          <div className="mt-4 p-3 bg-muted rounded-lg text-sm text-muted-foreground">
-            <p className="font-semibold mb-1">Demo Credentials:</p>
-            <p>Admin: admin@paramparafoods.com / Admin@123</p>
-            <p>Or create a new account</p>
-          </div>
         </CardContent>
       </Card>
     </div>
@@ -110,3 +71,4 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
+

@@ -1,137 +1,142 @@
-import React, { useState, useMemo } from 'react';
-import { useCart } from '../../contexts/CartContext';
-import { Product, Review } from '../../types';
-import Icon from '../Icon';
-
-const StarRating: React.FC<{ rating: number }> = ({ rating }) => (
-    <div className="flex items-center text-yellow-400">
-        {[...Array(5)].map((_, i) => (
-            <Icon key={i} name="star" className={`w-4 h-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300 fill-current'}`} />
-        ))}
-        <span className="ml-2 text-sm text-brand-gray-500">({rating.toFixed(1)})</span>
-    </div>
-);
+import React, { useState, useEffect } from 'react';
+import { useApiCart } from '../../contexts/ApiCartContext';
+import { Button } from '../ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { useToast } from '../ui/use-toast';
+import { apiClient, FeedbackDto } from '../../services/apiClient';
 
 const AdminReviewsPage: React.FC = () => {
-    const { products, reviews, users, setPage } = useCart();
-    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-    const [sortOrder, setSortOrder] = useState<'highest' | 'lowest'>('highest');
+    const { setPage, foods } = useApiCart();
+    const { toast } = useToast();
+    const [reviews, setReviews] = useState<FeedbackDto[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const productsWithReviews = useMemo(() => {
-        return products.map(product => {
-            const productReviews = reviews.filter(r => r.productId === product.id);
-            const averageRating = productReviews.length > 0
-                ? productReviews.reduce((sum, r) => sum + r.rating, 0) / productReviews.length
-                : 0;
-            return { ...product, reviewCount: productReviews.length, averageRating };
-        }).sort((a, b) => b.averageRating - a.averageRating);
-    }, [products, reviews]);
+    useEffect(() => {
+        loadReviews();
+    }, []);
 
-    const selectedProductReviews = useMemo(() => {
-        if (!selectedProduct) return [];
-        return reviews
-            .filter(r => r.productId === selectedProduct.id)
-            .sort((a, b) => sortOrder === 'highest' ? b.rating - a.rating : a.rating - b.rating);
-    }, [selectedProduct, reviews, sortOrder]);
+    const loadReviews = async () => {
+        try {
+            setLoading(true);
+            const feedbackData = await apiClient.getFeedback();
+            setReviews(feedbackData);
+        } catch (error) {
+            console.error('Error loading reviews:', error);
+            toast({
+                title: "Error",
+                description: "Failed to load reviews. Please try again.",
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    const getCustomerEmail = (userId: number) => {
-        return users.find(u => u.id === userId)?.email || '';
+    const getProductName = (foodId?: number) => {
+        if (!foodId) return 'General Review';
+        const product = foods.find(f => f.foodId === foodId);
+        return product?.name || `Product #${foodId}`;
+    };
+
+    const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString();
+    };
+
+    const renderStars = (rating: number) => {
+        return Array.from({ length: 5 }, (_, i) => (
+            <span key={i} className={i < rating ? 'text-yellow-400' : 'text-gray-300'}>
+                ⭐
+            </span>
+        ));
     };
 
     return (
-        <div className="bg-brand-gray-100 min-h-screen">
-            <div className="container mx-auto px-4 py-12">
-                <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold text-brand-gray-600">Manage Reviews</h1>
-                        <p className="text-brand-gray-400">
-                            <button onClick={() => setPage('adminDashboard')} className="text-brand-green hover:underline">Admin</button> / Manage Reviews
-                        </p>
-                    </div>
-                     <button 
-                        onClick={() => setPage('adminDashboard')}
-                        className="bg-brand-gray-200 text-brand-gray-600 font-bold py-2 px-4 rounded hover:bg-brand-gray-300 transition-colors"
-                    >
-                        Back to Dashboard
-                    </button>
+        <div className="container mx-auto px-4 py-12 min-h-screen">
+            <div className="flex justify-between items-center mb-8">
+                <div>
+                    <h1 className="text-3xl font-bold">Manage Reviews</h1>
+                    <p className="text-muted-foreground">
+                        <Button variant="link" className="p-0 h-auto" onClick={() => setPage('adminDashboard')}>
+                            Admin
+                        </Button> / Manage Reviews
+                    </p>
                 </div>
-
-                <div className="flex flex-col lg:flex-row gap-8">
-                    {/* Products List */}
-                    <div className="w-full lg:w-1/3">
-                        <div className="bg-white shadow rounded p-4">
-                            <h2 className="text-xl font-bold mb-4">Products by Rating</h2>
-                            <ul className="space-y-2 max-h-[70vh] overflow-y-auto">
-                                {productsWithReviews.map(p => (
-                                    <li key={p.id}>
-                                        <button 
-                                            onClick={() => setSelectedProduct(p)}
-                                            className={`w-full text-left p-3 rounded transition-colors ${selectedProduct?.id === p.id ? 'bg-brand-green/10' : 'hover:bg-brand-gray-100'}`}
-                                        >
-                                            <p className="font-semibold">{p.name}</p>
-                                            <div className="flex justify-between items-center text-sm">
-                                                <StarRating rating={p.averageRating} />
-                                                <span>{p.reviewCount} reviews</span>
-                                            </div>
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    </div>
-
-                    {/* Reviews for Selected Product */}
-                    <div className="w-full lg:w-2/3">
-                         <div className="bg-white shadow rounded p-6">
-                            {!selectedProduct ? (
-                                <div className="text-center py-20">
-                                    <Icon name="star" className="w-16 h-16 mx-auto text-brand-gray-300" />
-                                    <h3 className="text-xl font-bold text-brand-gray-500 mt-4">Select a product</h3>
-                                    <p className="text-brand-gray-400">Choose a product from the list to see its reviews.</p>
-                                </div>
-                            ) : (
-                                <div>
-                                    <div className="flex flex-wrap justify-between items-center gap-4 mb-4 border-b pb-4">
-                                        <h2 className="text-2xl font-bold text-brand-gray-600">Reviews for {selectedProduct.name}</h2>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm">Sort by:</span>
-                                            <select value={sortOrder} onChange={e => setSortOrder(e.target.value as 'highest' | 'lowest')} className="border border-brand-gray-300 rounded p-1 text-sm">
-                                                <option value="highest">Highest First</option>
-                                                <option value="lowest">Lowest First</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    
-                                    {selectedProductReviews.length > 0 ? (
-                                        <ul className="space-y-4">
-                                            {selectedProductReviews.map(review => (
-                                                <li key={review.id} className="border p-4 rounded-lg bg-brand-gray-100/50">
-                                                    <div className="flex justify-between items-start">
-                                                        <div>
-                                                            <p className="font-bold">{review.userName}</p>
-                                                            <p className="text-xs text-brand-gray-400 mb-2">{review.date.toLocaleDateString()}</p>
-                                                            <StarRating rating={review.rating} />
-                                                        </div>
-                                                        <a 
-                                                            href={`mailto:${getCustomerEmail(review.userId)}?subject=Regarding your review on ${selectedProduct.name}`}
-                                                            className="text-sm font-bold py-1 px-3 rounded bg-blue-500 text-white hover:bg-blue-600"
-                                                        >
-                                                            Respond via Email
-                                                        </a>
-                                                    </div>
-                                                    <p className="mt-2 text-brand-gray-600 italic">"{review.comment}"</p>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <p className="text-center py-10 text-brand-gray-500">No reviews for this product yet.</p>
-                                    )}
-                                </div>
-                            )}
-                         </div>
-                    </div>
+                <div className="flex gap-4">
+                    <Button variant="outline" onClick={() => setPage('adminDashboard')}>
+                        Back to Dashboard
+                    </Button>
+                    <Button variant="outline" onClick={loadReviews} disabled={loading}>
+                        {loading ? 'Refreshing...' : 'Refresh'}
+                    </Button>
                 </div>
             </div>
+
+{loading ? (
+                <div className="text-center py-8">
+                    <p>Loading reviews...</p>
+                </div>
+            ) : (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Customer Reviews ({reviews.length})</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {reviews.length === 0 ? (
+                            <div className="text-center py-8">
+                                <div className="text-6xl mb-4">⭐</div>
+                                <h3 className="text-lg font-semibold mb-2">No Reviews Yet</h3>
+                                <p className="text-muted-foreground">Customer reviews will appear here once they start leaving feedback.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {reviews.map(review => (
+                                    <Card key={review.feedbackId} className="border-l-4 border-l-primary">
+                                        <CardContent className="p-4">
+                                            <div className="flex justify-between items-start mb-3">
+                                                <div>
+                                                    <h3 className="font-semibold">{review.userName}</h3>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Review for: <span className="font-medium">{getProductName(review.foodId)}</span>
+                                                    </p>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <div className="flex">{renderStars(review.rating)}</div>
+                                                        <span className="text-sm text-muted-foreground">
+                                                            {review.rating}/5
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                                                        Published
+                                                    </span>
+                                                    <p className="text-sm text-muted-foreground mt-1">
+                                                        {formatDate(review.createdAt)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            
+                                            {review.comment && (
+                                                <p className="text-sm mb-4 bg-muted p-3 rounded">
+                                                    "{review.comment}"
+                                                </p>
+                                            )}
+                                            
+                                            <div className="flex gap-2">
+                                                <Button size="sm" variant="outline">
+                                                    Reply
+                                                </Button>
+                                                <Button size="sm" variant="destructive">
+                                                    Delete
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 };

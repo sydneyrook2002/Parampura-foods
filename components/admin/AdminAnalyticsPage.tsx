@@ -1,125 +1,123 @@
-import React, { useState, useMemo } from 'react';
-import { useCart, AnalyticsData } from '../../contexts/CartContext';
-import Icon from '../Icon';
-
-const StatCard: React.FC<{ title: string; value: string | number; icon: string; }> = ({ title, value, icon }) => (
-    <div className="bg-white p-6 rounded-lg shadow flex items-center gap-4">
-        <div className="bg-brand-green/10 p-3 rounded-full">
-            <Icon name={icon} className="w-8 h-8 text-brand-green" />
-        </div>
-        <div>
-            <p className="text-sm text-brand-gray-500">{title}</p>
-            <p className="text-2xl font-bold text-brand-gray-600">{value}</p>
-        </div>
-    </div>
-);
-
-const SalesChart: React.FC<{ data: { label: string; sales: number }[] }> = ({ data }) => {
-    const maxValue = Math.max(...data.map(d => d.sales));
-    if (maxValue === 0) {
-        return <div className="text-center p-10 bg-brand-gray-100 rounded">No sales data for this period.</div>;
-    }
-
-    return (
-        <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-xl font-bold text-brand-gray-600 mb-4">Sales Overview</h3>
-            <div className="flex justify-around items-end h-64 border-l border-b border-brand-gray-200">
-                {data.map(({ label, sales }) => (
-                    <div key={label} className="flex flex-col items-center flex-1">
-                        <div
-                            className="w-1/2 bg-brand-green hover:bg-brand-green-dark rounded-t"
-                            style={{ height: `${(sales / maxValue) * 100}%` }}
-                            title={`$${sales.toFixed(2)}`}
-                        ></div>
-                        <span className="text-xs text-brand-gray-500 mt-2">{label}</span>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
+import React from 'react';
+import { useApiCart } from '../../contexts/ApiCartContext';
+import { Button } from '../ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
 const AdminAnalyticsPage: React.FC = () => {
-    const { setPage, getAnalytics } = useCart();
-    const [period, setPeriod] = useState<'month' | 'year' | 'all'>('month');
+    const { foods, categories, setPage } = useApiCart();
 
-    const analyticsData: AnalyticsData = useMemo(() => getAnalytics(period), [getAnalytics, period]);
+    // Calculate some basic analytics
+    const totalProducts = foods.length;
+    const totalCategories = categories.length;
+    const organicProducts = foods.filter(f => f.isOrganic).length;
+    const availableProducts = foods.filter(f => f.isAvailable).length;
+    const totalValue = foods.reduce((sum, f) => sum + (f.price * f.stockQuantity), 0);
 
-    const periodTitle = {
-        month: 'This Month',
-        year: 'This Year',
-        all: 'All Time'
-    };
+    const stats = [
+        { title: 'Total Products', value: totalProducts, icon: '📦' },
+        { title: 'Total Categories', value: totalCategories, icon: '📂' },
+        { title: 'Organic Products', value: organicProducts, icon: '🌱' },
+        { title: 'Available Products', value: availableProducts, icon: '✅' },
+        { title: 'Inventory Value', value: `₹${totalValue.toFixed(2)}`, icon: '💰' },
+        { title: 'Average Price', value: `₹${(foods.reduce((sum, f) => sum + f.price, 0) / foods.length || 0).toFixed(2)}`, icon: '📊' }
+    ];
 
     return (
-        <div className="bg-brand-gray-100 min-h-screen">
-            <div className="container mx-auto px-4 py-12">
-                <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold text-brand-gray-600">Full Analytics</h1>
-                        <p className="text-brand-gray-400">
-                            <button onClick={() => setPage('adminDashboard')} className="text-brand-green hover:underline">Admin</button> / Analytics
-                        </p>
-                    </div>
-                    <button 
-                        onClick={() => setPage('adminDashboard')}
-                        className="bg-brand-gray-200 text-brand-gray-600 font-bold py-2 px-4 rounded hover:bg-brand-gray-300 transition-colors"
-                    >
-                        Back to Dashboard
-                    </button>
+        <div className="container mx-auto px-4 py-12 min-h-screen">
+            <div className="flex justify-between items-center mb-8">
+                <div>
+                    <h1 className="text-3xl font-bold">Analytics</h1>
+                    <p className="text-muted-foreground">
+                        <Button variant="link" className="p-0 h-auto" onClick={() => setPage('adminDashboard')}>
+                            Admin
+                        </Button> / Analytics
+                    </p>
                 </div>
-                
-                {/* Period Filter */}
-                <div className="mb-8 flex justify-center bg-white p-2 rounded-lg shadow w-fit mx-auto">
-                    {(['month', 'year', 'all'] as const).map(p => (
-                        <button
-                            key={p}
-                            onClick={() => setPeriod(p)}
-                            className={`px-6 py-2 rounded-md font-semibold transition-colors ${period === p ? 'bg-brand-green text-white shadow' : 'text-brand-gray-500 hover:bg-brand-gray-100'}`}
-                        >
-                            {periodTitle[p]}
-                        </button>
-                    ))}
-                </div>
+                <Button variant="outline" onClick={() => setPage('adminDashboard')}>
+                    Back to Dashboard
+                </Button>
+            </div>
 
-                {/* Stat Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                    <StatCard title={`Revenue (${periodTitle[period]})`} value={`$${analyticsData.revenue.toFixed(2)}`} icon="cart" />
-                    <StatCard title={`Orders (${periodTitle[period]})`} value={analyticsData.orderCount} icon="package" />
-                    <StatCard title={`New Customers (${periodTitle[period]})`} value={analyticsData.newCustomerCount} icon="user" />
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {stats.map((stat, index) => (
+                    <Card key={index}>
+                        <CardContent className="p-6">
+                            <div className="flex items-center gap-4">
+                                <div className="text-3xl">{stat.icon}</div>
+                                <div>
+                                    <p className="text-sm text-muted-foreground">{stat.title}</p>
+                                    <p className="text-2xl font-bold">{stat.value}</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
 
-                {/* Charts and Lists */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2">
-                        {period === 'year' && analyticsData.salesByPeriod ? (
-                           <SalesChart data={analyticsData.salesByPeriod} />
-                        ) : (
-                           <div className="h-full flex items-center justify-center bg-white p-6 rounded-lg shadow text-brand-gray-500">
-                                {period === 'month' ? 'Daily chart coming soon!' : 'Sales chart available for yearly view.'}
-                           </div>
-                        )}
-                    </div>
-                    <div className="bg-white p-6 rounded-lg shadow">
-                        <h3 className="text-xl font-bold text-brand-gray-600 mb-4">Top Selling Products</h3>
-                        {analyticsData.topSellingProducts.length > 0 ? (
-                            <ul className="space-y-4">
-                                {analyticsData.topSellingProducts.map(({ product, quantity }) => (
-                                    <li key={product.id} className="flex items-center gap-4">
-                                        <img src={product.imageUrls[0]} alt={product.name} className="w-12 h-12 object-cover rounded" />
-                                        <div className="flex-1">
-                                            <p className="font-semibold">{product.name}</p>
-                                            <p className="text-sm text-brand-gray-500">{quantity} units sold</p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Products by Category</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            {categories.map(category => {
+                                const categoryProducts = foods.filter(f => f.categoryId === category.categoryId);
+                                const percentage = (categoryProducts.length / totalProducts) * 100;
+                                
+                                return (
+                                    <div key={category.categoryId} className="space-y-2">
+                                        <div className="flex justify-between">
+                                            <span className="font-medium">{category.name}</span>
+                                            <span className="text-sm text-muted-foreground">
+                                                {categoryProducts.length} products ({percentage.toFixed(1)}%)
+                                            </span>
                                         </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p className="text-brand-gray-500">No products sold in this period.</p>
-                        )}
-                    </div>
-                </div>
+                                        <div className="w-full bg-muted rounded-full h-2">
+                                            <div 
+                                                className="bg-primary h-2 rounded-full" 
+                                                style={{ width: `${percentage}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </CardContent>
+                </Card>
 
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Top Products by Price</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-3">
+                            {foods
+                                .sort((a, b) => b.price - a.price)
+                                .slice(0, 5)
+                                .map(product => (
+                                    <div key={product.foodId} className="flex justify-between items-center">
+                                        <div className="flex items-center gap-3">
+                                            {product.imageUrl ? (
+                                                <img 
+                                                    src={product.imageUrl} 
+                                                    alt={product.name}
+                                                    className="w-8 h-8 rounded object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-8 h-8 bg-gradient-to-br from-gray-200 to-gray-400 rounded flex items-center justify-center">
+                                                    <span className="text-gray-600 text-xs font-medium">{product.name.charAt(0)}</span>
+                                                </div>
+                                            )}
+                                            <span className="font-medium">{product.name}</span>
+                                        </div>
+                                        <span className="font-bold">₹{product.price.toFixed(2)}</span>
+                                    </div>
+                                ))
+                            }
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );

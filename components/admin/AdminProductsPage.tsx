@@ -1,106 +1,452 @@
 import React, { useState } from 'react';
-import { useCart } from '../../contexts/CartContext';
-import Icon from '../Icon';
-import ProductForm from './ProductForm';
-import { Product } from '../../types';
+import { useApiCart } from '../../contexts/ApiCartContext';
+import { Button } from '../ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { useToast } from '../ui/use-toast';
+import { apiClient, CreateFoodDto, UpdateFoodDto, FoodDto } from '../../services/apiClient';
+import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
 
 const AdminProductsPage: React.FC = () => {
-    const { products, deleteProduct, setPage } = useCart();
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+    const { foods, categories, setPage, loading, loadFoods } = useApiCart();
+    const { toast } = useToast();
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [editingProduct, setEditingProduct] = useState<FoodDto | null>(null);
+    const [formData, setFormData] = useState<Partial<CreateFoodDto | UpdateFoodDto>>({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleEdit = (product: Product) => {
-        setProductToEdit(product);
-        setIsModalOpen(true);
+    const resetForm = () => {
+        setFormData({});
+        setShowAddForm(false);
+        setEditingProduct(null);
     };
 
-    const handleAddNew = () => {
-        setProductToEdit(null);
-        setIsModalOpen(true);
+    const handleInputChange = (field: string, value: string | number | boolean) => {
+        setFormData(prev => ({
+            ...prev,
+            [field]: value
+        }));
     };
 
-    const handleDelete = (productId: number) => {
-        if (window.confirm('Are you sure you want to delete this product?')) {
-            deleteProduct(productId);
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+
+        try {
+            if (editingProduct) {
+                // Update existing product
+                const updateData: UpdateFoodDto = {
+                    name: formData.name || editingProduct.name,
+                    description: formData.description || editingProduct.description,
+                    mrp: Number(formData.mrp) || editingProduct.mrp,
+                    salePrice: formData.salePrice ? Number(formData.salePrice) : editingProduct.salePrice,
+                    categoryId: Number(formData.categoryId) || editingProduct.categoryId,
+                    isAvailable: formData.isAvailable !== undefined ? formData.isAvailable : editingProduct.isAvailable,
+                    isOrganic: formData.isOrganic !== undefined ? formData.isOrganic : editingProduct.isOrganic,
+                    stockQuantity: Number(formData.stockQuantity) || editingProduct.stockQuantity,
+                    imageUrl: formData.imageUrl || editingProduct.imageUrl,
+                    brand: formData.brand || editingProduct.brand,
+                    unit: formData.unit || editingProduct.unit || 'kg',
+                    quantity: Number(formData.quantity) || editingProduct.quantity,
+                    tags: formData.tags || editingProduct.tags,
+                    minStockLevel: Number(formData.minStockLevel) || 5,
+                };
+
+                await apiClient.updateFood(editingProduct.foodId, updateData);
+                toast({
+                    title: "Success",
+                    description: "Product updated successfully!",
+                });
+            } else {
+                // Create new product
+                const createData: CreateFoodDto = {
+                    name: formData.name as string,
+                    description: formData.description as string,
+                    mrp: Number(formData.mrp),
+                    salePrice: formData.salePrice ? Number(formData.salePrice) : undefined,
+                    categoryId: Number(formData.categoryId),
+                    isOrganic: formData.isOrganic as boolean || false,
+                    stockQuantity: Number(formData.stockQuantity) || 0,
+                    imageUrl: formData.imageUrl as string,
+                    brand: formData.brand as string,
+                    unit: formData.unit as string || 'kg',
+                    quantity: Number(formData.quantity) || 1,
+                    tags: formData.tags as string,
+                    minStockLevel: Number(formData.minStockLevel) || 5,
+                };
+
+                await apiClient.createFood(createData);
+                toast({
+                    title: "Success",
+                    description: "Product created successfully!",
+                });
+            }
+
+            resetForm();
+            await loadFoods(); // Refresh the products list
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: `Failed to ${editingProduct ? 'update' : 'create'} product. Please try again.`,
+                variant: "destructive",
+            });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
-    return (
-        <div className="bg-brand-gray-100 min-h-screen">
-            <div className="container mx-auto px-4 py-12">
-                <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold text-brand-gray-600">Manage Products</h1>
-                        <p className="text-brand-gray-400">
-                          <button onClick={() => setPage('adminDashboard')} className="text-brand-green hover:underline">Admin</button> / Manage Products
-                        </p>
-                    </div>
-                    <div className="flex gap-4">
-                        <button 
-                            onClick={() => setPage('adminDashboard')}
-                            className="bg-brand-gray-200 text-brand-gray-600 font-bold py-2 px-4 rounded hover:bg-brand-gray-300 transition-colors"
-                        >
-                            Back to Dashboard
-                        </button>
-                        <button 
-                            onClick={handleAddNew}
-                            className="flex items-center gap-2 bg-brand-green text-white font-bold py-2 px-4 rounded hover:bg-brand-green-dark transition-colors"
-                        >
-                            <Icon name="plus-circle" className="w-5 h-5" />
-                            Add New Product
-                        </button>
-                    </div>
-                </div>
+    const handleDelete = async (productId: number, productName: string) => {
+        if (!confirm(`Are you sure you want to delete "${productName}"? This action cannot be undone.`)) {
+            return;
+        }
 
-                <div className="bg-white shadow rounded overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead className="border-b border-brand-gray-200 bg-brand-gray-100">
-                            <tr>
-                                <th className="p-4 font-semibold text-brand-gray-500">ID</th>
-                                <th className="p-4 font-semibold text-brand-gray-500">Image</th>
-                                <th className="p-4 font-semibold text-brand-gray-500">Name</th>
-                                <th className="p-4 font-semibold text-brand-gray-500">Price</th>
-                                <th className="p-4 font-semibold text-brand-gray-500">Status</th>
-                                <th className="p-4 font-semibold text-brand-gray-500">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {products.map(product => (
-                                <tr key={product.id} className="border-b border-brand-gray-200 hover:bg-brand-gray-100">
-                                    <td className="p-4 text-brand-gray-500">{product.id}</td>
-                                    <td className="p-4">
-                                        <img src={product.imageUrls[0]} alt={product.name} className="w-12 h-12 object-cover rounded"/>
-                                    </td>
-                                    <td className="p-4 font-semibold text-brand-gray-600">{product.name}</td>
-                                    <td className="p-4 text-brand-gray-500">${product.price.toFixed(2)}</td>
-                                    <td className="p-4">
-                                        <div className="flex flex-col gap-1 text-xs">
-                                          {product.isNew && <span className="bg-blue-500 text-white font-bold px-2 py-0.5 rounded-full inline-block text-center">NEW</span>}
-                                          {product.isSale && <span className="bg-red-500 text-white font-bold px-2 py-0.5 rounded-full inline-block text-center">SALE</span>}
-                                        </div>
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="flex gap-2">
-                                            <button onClick={() => handleEdit(product)} className="text-blue-500 hover:text-blue-700" title="Edit">
-                                                <Icon name="edit" className="w-5 h-5"/>
-                                            </button>
-                                            <button onClick={() => handleDelete(product.id)} className="text-red-500 hover:text-red-700" title="Delete">
-                                                <Icon name="trash" className="w-5 h-5"/>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+        try {
+            await apiClient.deleteFood(productId);
+            toast({
+                title: "Success",
+                description: "Product deleted successfully!",
+            });
+            await loadFoods(); // Refresh the products list
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: "Failed to delete product. Please try again.",
+                variant: "destructive",
+            });
+        }
+    };
+
+    const startEdit = (product: FoodDto) => {
+        setEditingProduct(product);
+        setFormData({
+            name: product.name,
+            description: product.description,
+            mrp: product.mrp,
+            salePrice: product.salePrice,
+            categoryId: product.categoryId,
+            isAvailable: product.isAvailable,
+            isOrganic: product.isOrganic,
+            stockQuantity: product.stockQuantity,
+            imageUrl: product.imageUrl,
+            brand: product.brand,
+            unit: product.unit,
+            quantity: product.quantity,
+            tags: product.tags,
+        });
+        setShowAddForm(true);
+    };
+
+    return (
+        <div className="container mx-auto px-4 py-12 min-h-screen">
+            <div className="flex justify-between items-center mb-8">
+                <div>
+                    <h1 className="text-3xl font-bold">Manage Products</h1>
+                    <nav className="text-sm text-muted-foreground">
+                        <Button variant="link" className="p-0 h-auto" onClick={() => setPage('adminDashboard')}>
+                            Admin
+                        </Button>
+                        <span className="mx-2">/</span>
+                        <span>Manage Products</span>
+                    </nav>
+                </div>
+                <div className="flex gap-4">
+                    <Button variant="outline" onClick={() => setPage('adminDashboard')}>
+                        Back to Dashboard
+                    </Button>
+                    <Button onClick={() => setShowAddForm(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add New Product
+                    </Button>
                 </div>
             </div>
 
-            {isModalOpen && (
-                <ProductForm
-                    productToEdit={productToEdit}
-                    onClose={() => setIsModalOpen(false)}
-                />
+            {/* Add/Edit Form */}
+            {showAddForm && (
+                <Card className="mb-8">
+                    <CardHeader>
+                        <CardTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor="name">Product Name *</Label>
+                                <Input
+                                    id="name"
+                                    value={formData.name || ''}
+                                    onChange={(e) => handleInputChange('name', e.target.value)}
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <Label htmlFor="categoryId">Category *</Label>
+                                <select
+                                    id="categoryId"
+                                    className="w-full px-3 py-2 border border-border rounded-md"
+                                    value={formData.categoryId || ''}
+                                    onChange={(e) => handleInputChange('categoryId', Number(e.target.value))}
+                                    required
+                                >
+                                    <option value="">Select Category</option>
+                                    {categories.map(category => (
+                                        <option key={category.categoryId} value={category.categoryId}>
+                                            {category.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <Label htmlFor="mrp">MRP (₹) *</Label>
+                                <Input
+                                    id="mrp"
+                                    type="number"
+                                    step="0.01"
+                                    value={formData.mrp || ''}
+                                    onChange={(e) => handleInputChange('mrp', Number(e.target.value))}
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <Label htmlFor="salePrice">Sale Price (₹)</Label>
+                                <Input
+                                    id="salePrice"
+                                    type="number"
+                                    step="0.01"
+                                    value={formData.salePrice || ''}
+                                    onChange={(e) => handleInputChange('salePrice', Number(e.target.value))}
+                                />
+                            </div>
+
+                            <div>
+                                <Label htmlFor="stockQuantity">Stock Quantity *</Label>
+                                <Input
+                                    id="stockQuantity"
+                                    type="number"
+                                    value={formData.stockQuantity || ''}
+                                    onChange={(e) => handleInputChange('stockQuantity', Number(e.target.value))}
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <Label htmlFor="brand">Brand</Label>
+                                <Input
+                                    id="brand"
+                                    value={formData.brand || ''}
+                                    onChange={(e) => handleInputChange('brand', e.target.value)}
+                                />
+                            </div>
+
+                            <div>
+                                <Label htmlFor="unit">Unit</Label>
+                                <select
+                                    id="unit"
+                                    className="w-full px-3 py-2 border border-border rounded-md"
+                                    value={formData.unit || 'kg'}
+                                    onChange={(e) => handleInputChange('unit', e.target.value)}
+                                >
+                                    <option value="kg">kg</option>
+                                    <option value="grams">grams</option>
+                                    <option value="pieces">pieces</option>
+                                    <option value="liters">liters</option>
+                                    <option value="ml">ml</option>
+                                    <option value="pack">pack</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <Label htmlFor="quantity">Quantity</Label>
+                                <Input
+                                    id="quantity"
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.quantity || ''}
+                                    onChange={(e) => handleInputChange('quantity', Number(e.target.value))}
+                                />
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <Label htmlFor="description">Description *</Label>
+                                <textarea
+                                    id="description"
+                                    className="w-full px-3 py-2 border border-border rounded-md"
+                                    rows={3}
+                                    value={formData.description || ''}
+                                    onChange={(e) => handleInputChange('description', e.target.value)}
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <Label htmlFor="imageUrl">Image URL</Label>
+                                <Input
+                                    id="imageUrl"
+                                    value={formData.imageUrl || ''}
+                                    onChange={(e) => handleInputChange('imageUrl', e.target.value)}
+                                />
+                            </div>
+
+                            <div>
+                                <Label htmlFor="tags">Tags (comma-separated)</Label>
+                                <Input
+                                    id="tags"
+                                    value={formData.tags || ''}
+                                    onChange={(e) => handleInputChange('tags', e.target.value)}
+                                    placeholder="organic, fresh, local"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-4">
+                                <label className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.isOrganic || false}
+                                        onChange={(e) => handleInputChange('isOrganic', e.target.checked)}
+                                    />
+                                    Organic
+                                </label>
+                                {editingProduct && (
+                                    <label className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.isAvailable !== undefined ? formData.isAvailable : true}
+                                            onChange={(e) => handleInputChange('isAvailable', e.target.checked)}
+                                        />
+                                        Available
+                                    </label>
+                                )}
+                            </div>
+
+                            <div className="md:col-span-2 flex gap-4">
+                                <Button type="submit" disabled={isSubmitting}>
+                                    <Save className="h-4 w-4 mr-2" />
+                                    {isSubmitting ? 'Saving...' : (editingProduct ? 'Update Product' : 'Create Product')}
+                                </Button>
+                                <Button type="button" variant="outline" onClick={resetForm}>
+                                    <X className="h-4 w-4 mr-2" />
+                                    Cancel
+                                </Button>
+                            </div>
+                        </form>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Products Table */}
+            {loading ? (
+                <div className="text-center py-8">
+                    <p>Loading products...</p>
+                </div>
+            ) : (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Products ({foods.length})</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="border-b">
+                                    <tr>
+                                        <th className="p-4 font-semibold">Image</th>
+                                        <th className="p-4 font-semibold">Name</th>
+                                        <th className="p-4 font-semibold">Category</th>
+                                        <th className="p-4 font-semibold">MRP</th>
+                                        <th className="p-4 font-semibold">Sale Price</th>
+                                        <th className="p-4 font-semibold">Stock</th>
+                                        <th className="p-4 font-semibold">Status</th>
+                                        <th className="p-4 font-semibold">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {foods.map(product => (
+                                        <tr key={product.foodId} className="border-b hover:bg-muted/50">
+                                            <td className="p-4">
+                                                {product.imageUrl ? (
+                                                    <img 
+                                                        src={product.imageUrl} 
+                                                        alt={product.name} 
+                                                        className="w-12 h-12 object-cover rounded"
+                                                    />
+                                                ) : (
+                                                    <div className="w-12 h-12 bg-gradient-to-br from-gray-200 to-gray-400 rounded flex items-center justify-center">
+                                                        <span className="text-gray-600 text-xs font-medium">{product.name.charAt(0)}</span>
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="p-4">
+                                                <div>
+                                                    <div className="font-semibold">{product.name}</div>
+                                                    <div className="text-sm text-muted-foreground">{product.brand}</div>
+                                                </div>
+                                            </td>
+                                            <td className="p-4">{product.categoryName}</td>
+                                            <td className="p-4">₹{product.mrp.toFixed(2)}</td>
+                                            <td className="p-4">
+                                                {product.salePrice ? (
+                                                    <div>
+                                                        <div className="font-semibold text-green-600">₹{product.salePrice.toFixed(2)}</div>
+                                                        <div className="text-xs text-red-600">{product.discountPercentage}% OFF</div>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-muted-foreground">-</span>
+                                                )}
+                                            </td>
+                                            <td className="p-4">
+                                                <span className={product.isLowStock ? 'text-red-600 font-semibold' : ''}>
+                                                    {product.stockQuantity}
+                                                </span>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex flex-col gap-1">
+                                                    {product.isAvailable ? (
+                                                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                                                            Available
+                                                        </span>
+                                                    ) : (
+                                                        <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">
+                                                            Unavailable
+                                                        </span>
+                                                    )}
+                                                    {product.isOrganic && (
+                                                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                                            Organic
+                                                        </span>
+                                                    )}
+                                                    {product.isOnSale && (
+                                                        <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full">
+                                                            On Sale
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex gap-2">
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="outline"
+                                                        onClick={() => startEdit(product)}
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="destructive"
+                                                        onClick={() => handleDelete(product.foodId, product.name)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </CardContent>
+                </Card>
             )}
         </div>
     );

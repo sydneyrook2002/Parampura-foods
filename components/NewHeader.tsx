@@ -1,22 +1,20 @@
 import { ShoppingCart, Heart, User, Search, Menu } from 'lucide-react';
-import { useApiCart } from '../contexts/ApiCartContext';
+import { useCart } from '../contexts/CartContext';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { useState } from 'react';
 
 const Header = () => {
-  const { cart, wishlist, user, setPage, performSearch } = useApiCart();
+  const { cart, wishlist, user, setPage, setSearchQuery } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchInput, setSearchInput] = useState('');
 
-  const cartItemCount = cart?.reduce((total, item) => total + item.quantity, 0) || 0;
+  const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchInput.trim()) {
-      performSearch(searchInput.trim());
-      setSearchInput('');
-    }
+    setSearchQuery(searchInput);
+    setPage('searchResults');
   };
 
   return (
@@ -60,7 +58,7 @@ const Header = () => {
               className="relative hidden sm:flex"
             >
               <Heart className="h-5 w-5" />
-              {wishlist && wishlist.length > 0 && (
+              {wishlist.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-accent text-accent-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
                   {wishlist.length}
                 </span>
@@ -84,15 +82,7 @@ const Header = () => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => {
-                if (!user) {
-                  setPage('login');
-                } else if (user.role === 'Admin') {
-                  setPage('adminDashboard');
-                } else {
-                  setPage('account');
-                }
-              }}
+              onClick={() => setPage(user ? (user.role === 'admin' ? 'adminDashboard' : 'account') : 'login')}
               className="hidden sm:flex"
             >
               <User className="h-5 w-5" />
@@ -176,3 +166,4 @@ const Header = () => {
 };
 
 export default Header;
+

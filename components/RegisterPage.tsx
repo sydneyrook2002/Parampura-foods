@@ -1,76 +1,150 @@
-import React, { useState } from 'react';
-import { useCart } from '../contexts/CartContext';
+import { useState, useEffect } from 'react';
+import { useApiCart } from '../contexts/ApiCartContext';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { useToast } from './ui/use-toast';
 
-const RegisterPage: React.FC = () => {
-    const { register, setPage } = useCart();
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
+const RegisterPage = () => {
+  const { register, setPage, loading, error, clearError } = useApiCart();
+  const { toast } = useToast();
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    address: ''
+  });
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-        const success = register(name, email, password);
-        if (!success) {
-            setError('An account with this email already exists.');
-        }
-    };
+  // Clear any existing errors when component mounts
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
 
-    return (
-        <div className="bg-brand-gray-100">
-            <div className="container mx-auto px-4 py-20">
-                <div className="max-w-md mx-auto bg-white shadow-md rounded p-8">
-                    <h1 className="text-3xl font-bold text-brand-gray-600 mb-6 text-center">Create Account</h1>
-                    {error && <p className="bg-red-100 text-red-700 p-3 rounded mb-4 text-sm">{error}</p>}
-                    <form onSubmit={handleSubmit}>
-                        <div className="mb-4">
-                            <label htmlFor="name" className="block text-sm font-medium text-brand-gray-500 mb-1">Full Name</label>
-                            <input
-                                type="text"
-                                id="name"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                required
-                                className="w-full border border-brand-gray-300 px-3 py-2 rounded focus:ring-brand-green focus:border-brand-green"
-                            />
-                        </div>
-                        <div className="mb-4">
-                            <label htmlFor="email" className="block text-sm font-medium text-brand-gray-500 mb-1">Email Address</label>
-                            <input
-                                type="email"
-                                id="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                className="w-full border border-brand-gray-300 px-3 py-2 rounded focus:ring-brand-green focus:border-brand-green"
-                            />
-                        </div>
-                        <div className="mb-6">
-                            <label htmlFor="password" className="block text-sm font-medium text-brand-gray-500 mb-1">Password</label>
-                            <input
-                                type="password"
-                                id="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                className="w-full border border-brand-gray-300 px-3 py-2 rounded focus:ring-brand-green focus:border-brand-green"
-                            />
-                        </div>
-                        <button type="submit" className="w-full bg-brand-green text-white font-bold py-3 rounded hover:bg-brand-green-dark transition-colors">
-                            Register
-                        </button>
-                    </form>
-                    <p className="text-center text-sm text-brand-gray-500 mt-6">
-                        Already have an account?{' '}
-                        <a href="#" onClick={(e) => { e.preventDefault(); setPage('login'); }} className="text-brand-green font-semibold hover:underline">
-                            Login here
-                        </a>
-                    </p>
-                </div>
-            </div>
-        </div>
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (formData.password.length < 6) {
+      toast({
+        title: "Password Too Short",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const success = await register(
+      formData.fullName,
+      formData.email,
+      formData.password,
+      formData.address
     );
+    
+    if (success) {
+      toast({
+        title: "Registration Successful",
+        description: "Welcome to Parampara Eats!",
+      });
+      
+      // Redirect to home after successful registration
+      setPage('home');
+    } else {
+      toast({
+        title: "Registration Failed",
+        description: error || "Failed to create account. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-16 min-h-screen flex items-center justify-center">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="text-2xl text-center">Create Account</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Input
+                type="text"
+                name="fullName"
+                placeholder="Full Name"
+                value={formData.fullName}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div>
+              <Input
+                type="email"
+                name="email"
+                placeholder="Email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div>
+              <Input
+                type="password"
+                name="password"
+                placeholder="Password (min 6 characters)"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                minLength={6}
+              />
+            </div>
+            <div>
+              <Input
+                type="text"
+                name="address"
+                placeholder="Address"
+                value={formData.address}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            {error && (
+              <div className="text-red-500 text-sm text-center">
+                {error}
+              </div>
+            )}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Creating Account...' : 'Create Account'}
+            </Button>
+          </form>
+          <div className="mt-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              Already have an account?{' '}
+              <button
+                onClick={() => setPage('login')}
+                className="text-primary hover:underline"
+              >
+                Sign in
+              </button>
+            </p>
+          </div>
+          <div className="mt-4 text-center">
+            <Button
+              variant="outline"
+              onClick={() => setPage('home')}
+              className="w-full"
+            >
+              Continue as Guest
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 };
 
 export default RegisterPage;

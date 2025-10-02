@@ -1,32 +1,22 @@
 import { ArrowRight, Leaf, Truck, Shield, Star } from 'lucide-react';
-import { useApiCart } from '../contexts/ApiCartContext';
+import { useCart } from '../contexts/CartContext';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
+import { products, categories } from '../services/data';
 
 const HomePage = () => {
-  const { setPage, viewCategory, viewProduct, addToCart, foods, categories, loading } = useApiCart();
+  const { setPage, setSelectedCategory, setSelectedProduct, addToCart } = useCart();
 
-  const featuredProducts = foods.slice(0, 4);
-
-  // Generate category-specific gradients based on category name
-  const getCategoryGradient = (categoryName: string) => {
-    const gradients: Record<string, string> = {
-      'Vegetables': 'from-green-500 to-green-700',
-      'Fruits': 'from-orange-400 to-red-500',
-      'Dairy': 'from-blue-400 to-blue-600',
-      'Grains': 'from-yellow-500 to-orange-500',
-      'Meat': 'from-red-500 to-red-700',
-      'Beverages': 'from-purple-400 to-purple-600',
-    };
-    
-    return gradients[categoryName] || 'from-gray-500 to-gray-700';
-  };
+  const featuredProducts = products.slice(0, 4);
 
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
       <section className="relative h-[600px] overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-green-600 via-green-500 to-emerald-600">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url('/placeholder.svg')` }}
+        >
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-black/40" />
         </div>
         <div className="relative container mx-auto px-4 h-full flex items-center">
@@ -40,7 +30,7 @@ const HomePage = () => {
             <div className="flex flex-col sm:flex-row gap-4">
               <Button
                 size="lg"
-                onClick={() => viewCategory('')}
+                onClick={() => setPage('category')}
                 className="bg-primary hover:bg-primary/90"
               >
                 Shop Now
@@ -115,14 +105,19 @@ const HomePage = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {categories.slice(0, 3).map((category) => (
               <Card
-                key={category.categoryId}
+                key={category.id}
                 className="group cursor-pointer overflow-hidden border-none shadow-md hover:shadow-xl transition-all duration-300"
                 onClick={() => {
-                  viewCategory(category.categoryId.toString());
+                  setSelectedCategory(category.id);
+                  setPage('category');
                 }}
               >
                 <div className="relative h-64 overflow-hidden">
-                  <div className={`w-full h-full bg-gradient-to-br ${getCategoryGradient(category.name)} group-hover:scale-110 transition-transform duration-500`} />
+                  <img
+                    src="/placeholder.svg"
+                    alt={category.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end">
                     <CardContent className="text-white p-6 w-full">
                       <h3 className="text-2xl font-bold mb-2">{category.name}</h3>
@@ -146,98 +141,60 @@ const HomePage = () => {
             </p>
           </div>
 
-          {loading ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">Loading products...</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {featuredProducts.map((product) => (
-                <Card
-                  key={product.foodId}
-                  className="group cursor-pointer border-none shadow-md hover:shadow-xl transition-all duration-300"
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {featuredProducts.map((product) => (
+              <Card
+                key={product.id}
+                className="group cursor-pointer border-none shadow-md hover:shadow-xl transition-all duration-300"
+              >
+                <div
+                  className="relative h-48 overflow-hidden rounded-t-lg bg-muted"
+                  onClick={() => {
+                    setSelectedProduct(product);
+                    setPage('productDetail');
+                  }}
                 >
-                  <div
-                    className="relative h-48 overflow-hidden rounded-t-lg bg-muted"
-                    onClick={() => {
-                      viewProduct(product.foodId);
-                    }}
-                  >
-                    {product.imageUrl ? (
-                      <img
-                        src={product.imageUrl}
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-400 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
-                        <span className="text-gray-600 text-lg font-medium">{product.name}</span>
-                      </div>
-                    )}
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                  {product.rating && (
                     <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center space-x-1">
                       <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                       <span className="text-xs font-semibold">{product.rating}</span>
                     </div>
-                    {product.isOnSale && (
-                      <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
-                        {product.discountPercentage}% OFF
-                      </div>
-                    )}
-                    {product.isOrganic && !product.isOnSale && (
-                      <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
-                        Organic
-                      </div>
-                    )}
+                  )}
+                </div>
+                <CardContent className="p-4">
+                  <h3 className="font-semibold mb-2 line-clamp-1">{product.name}</h3>
+                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                    {product.description}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-bold text-primary">
+                      ${product.price.toFixed(2)}
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addToCart(product);
+                      }}
+                    >
+                      Add to Cart
+                    </Button>
                   </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold mb-2 line-clamp-1">{product.name}</h3>
-                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                      {product.description}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col">
-                        {product.isOnSale ? (
-                          <>
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg font-bold text-primary">
-                                ₹{product.salePrice?.toFixed(2)}
-                              </span>
-                              <span className="text-sm text-muted-foreground line-through">
-                                ₹{product.mrp.toFixed(2)}
-                              </span>
-                            </div>
-                            <span className="text-xs text-green-600 font-medium">
-                              Save ₹{product.savings.toFixed(2)}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-lg font-bold text-primary">
-                            ₹{product.mrp.toFixed(2)}
-                          </span>
-                        )}
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          addToCart(product);
-                        }}
-                        disabled={!product.isAvailable || product.stockQuantity === 0}
-                      >
-                        {product.isAvailable && product.stockQuantity > 0 ? 'Add to Cart' : 'Out of Stock'}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
           <div className="text-center mt-12">
             <Button
               size="lg"
               variant="outline"
-              onClick={() => viewCategory('')}
+              onClick={() => setPage('category')}
             >
               View All Products
               <ArrowRight className="ml-2 h-5 w-5" />
@@ -258,7 +215,7 @@ const HomePage = () => {
           <Button
             size="lg"
             variant="secondary"
-            onClick={() => viewCategory('')}
+            onClick={() => setPage('category')}
           >
             Shop Now
             <ArrowRight className="ml-2 h-5 w-5" />
@@ -270,3 +227,4 @@ const HomePage = () => {
 };
 
 export default HomePage;
+

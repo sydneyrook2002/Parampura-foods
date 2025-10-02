@@ -1,12 +1,12 @@
 import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
-import { useApiCart } from '../contexts/ApiCartContext';
+import { useCart } from '../contexts/CartContext';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 
 const CartPage = () => {
-  const { cart, removeFromCart, updateQuantity, cartTotal, setPage } = useApiCart();
+  const { cart, removeFromCart, updateQuantity, cartTotal, setPage } = useCart();
 
-  if (!cart || cart.length === 0) {
+  if (cart.length === 0) {
     return (
       <div className="container mx-auto px-4 py-16 min-h-[60vh]">
         <div className="max-w-md mx-auto text-center">
@@ -28,31 +28,25 @@ const CartPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-4">
           {cart.map((item) => (
-            <Card key={item.foodId}>
+            <Card key={item.id}>
               <CardContent className="p-4">
                 <div className="flex gap-4">
-                  {item.imageUrl ? (
-                    <img
-                      src={item.imageUrl}
-                      alt={item.name}
-                      className="w-24 h-24 object-cover rounded-lg"
-                    />
-                  ) : (
-                    <div className="w-24 h-24 bg-gradient-to-br from-gray-200 to-gray-400 rounded-lg flex items-center justify-center">
-                      <span className="text-gray-600 text-xs font-medium text-center">{item.name}</span>
-                    </div>
-                  )}
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="w-24 h-24 object-cover rounded-lg"
+                  />
                   <div className="flex-1">
                     <h3 className="font-semibold mb-1">{item.name}</h3>
                     <p className="text-sm text-muted-foreground mb-2">
-                      {item.categoryName}
+                      {item.category}
                     </p>
                     <div className="flex items-center gap-4">
                       <div className="flex items-center border border-border rounded-lg">
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => updateQuantity(item.foodId, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
                         >
                           <Minus className="h-4 w-4" />
                         </Button>
@@ -60,31 +54,18 @@ const CartPage = () => {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => updateQuantity(item.foodId, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
                       </div>
-                      <div className="text-right">
-                        {item.isOnSale ? (
-                          <>
-                            <div className="font-bold text-lg text-primary">
-                              ₹{((item.salePrice || item.price) * item.quantity).toFixed(2)}
-                            </div>
-                            <div className="text-sm text-muted-foreground line-through">
-                              ₹{(item.mrp * item.quantity).toFixed(2)}
-                            </div>
-                          </>
-                        ) : (
-                          <div className="font-bold text-lg text-primary">
-                            ₹{(item.mrp * item.quantity).toFixed(2)}
-                          </div>
-                        )}
-                      </div>
+                      <span className="font-bold text-lg text-primary">
+                        ${(item.price * item.quantity).toFixed(2)}
+                      </span>
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => removeFromCart(item.foodId)}
+                        onClick={() => removeFromCart(item.id)}
                         className="ml-auto text-destructive hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -104,24 +85,24 @@ const CartPage = () => {
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-semibold">₹{cartTotal.toFixed(2)}</span>
+                  <span className="font-semibold">${cartTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Shipping</span>
                   <span className="font-semibold">
-                    {cartTotal >= 500 ? 'Free' : '₹50'}
+                    {cartTotal >= 50 ? 'Free' : '$5.99'}
                   </span>
                 </div>
                 <div className="border-t border-border pt-3">
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>
                     <span className="text-primary">
-                      ₹{(cartTotal + (cartTotal >= 500 ? 0 : 50)).toFixed(2)}
+                      ${(cartTotal + (cartTotal >= 50 ? 0 : 5.99)).toFixed(2)}
                     </span>
                   </div>
                 </div>
               </div>
-              <Button className="w-full" size="lg" onClick={() => setPage('checkout')}>
+              <Button className="w-full" size="lg" onClick={() => setPage('login')}>
                 Proceed to Checkout
               </Button>
               <Button
@@ -140,3 +121,4 @@ const CartPage = () => {
 };
 
 export default CartPage;
+
