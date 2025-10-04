@@ -3,7 +3,7 @@ import { useApiCart } from '../contexts/ApiCartContext';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { ArrowLeft, CreditCard } from 'lucide-react';
+import { CreditCard } from 'lucide-react';
 
 const CheckoutPage = () => {
   const { cart, cartTotal, placeOrder, setPage, loading, error, isAuthenticated } = useApiCart();
@@ -52,20 +52,11 @@ const CheckoutPage = () => {
     }
   };
 
-  const shippingCost = cartTotal >= 50 ? 0 : 5.99;
+  const shippingCost = cartTotal >= 500 ? 0 : 50;
   const totalAmount = cartTotal + shippingCost;
 
   return (
     <div className="container mx-auto px-4 py-12 min-h-screen">
-      <Button
-        variant="ghost"
-        onClick={() => setPage('cart')}
-        className="mb-6"
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Cart
-      </Button>
-
       <h1 className="text-3xl font-bold mb-8">Checkout</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -147,7 +138,7 @@ const CheckoutPage = () => {
                 {cart.map((item) => (
                   <div key={item.foodId} className="flex justify-between text-sm">
                     <span>{item.name} × {item.quantity}</span>
-                    <span>${(item.price * item.quantity).toFixed(2)}</span>
+                    <span>₹{(item.price * item.quantity).toFixed(2)}</span>
                   </div>
                 ))}
               </div>
@@ -155,15 +146,15 @@ const CheckoutPage = () => {
               <div className="border-t border-border pt-3 space-y-2">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span>${cartTotal.toFixed(2)}</span>
+                  <span>₹{cartTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Shipping</span>
-                  <span>{shippingCost === 0 ? 'Free' : `$${shippingCost.toFixed(2)}`}</span>
+                  <span>{shippingCost === 0 ? 'Free' : `₹${shippingCost.toFixed(2)}`}</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold border-t border-border pt-2">
                   <span>Total</span>
-                  <span className="text-primary">${totalAmount.toFixed(2)}</span>
+                  <span className="text-primary">₹{totalAmount.toFixed(2)}</span>
                 </div>
               </div>
             </CardContent>

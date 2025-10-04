@@ -4,14 +4,24 @@ import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useToast } from '../ui/use-toast';
 import { apiClient, UserDto, CreateUserDto } from '../../services/apiClient';
-import { User, Shield, Trash2, Edit, UserPlus } from 'lucide-react';
+import { User, Shield, Trash2, Edit, UserPlus, ArrowLeft } from 'lucide-react';
+
+interface Role {
+  roleId: number;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  userCount: number;
+}
 
 const AdminUsersPage: React.FC = () => {
     const { user, setPage } = useApiCart();
     const { toast } = useToast();
     const [users, setUsers] = useState<UserDto[]>([]);
+    const [roles, setRoles] = useState<Role[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedUser, setSelectedUser] = useState<UserDto | null>(null);
     const [showRoleModal, setShowRoleModal] = useState(false);
@@ -19,6 +29,7 @@ const AdminUsersPage: React.FC = () => {
     const [newRole, setNewRole] = useState('');
     const [isUpdating, setIsUpdating] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
     const [newUserData, setNewUserData] = useState<CreateUserDto>({
         email: '',
         fullName: '',
@@ -29,6 +40,7 @@ const AdminUsersPage: React.FC = () => {
 
     useEffect(() => {
         loadUsers();
+        loadRoles();
     }, []);
 
     const loadUsers = async () => {
@@ -45,6 +57,40 @@ const AdminUsersPage: React.FC = () => {
             });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const searchUsers = async (query: string) => {
+        if (!query.trim()) {
+            loadUsers();
+            return;
+        }
+        
+        try {
+            setLoading(true);
+            const searchResults = await apiClient.searchUsers(query, 20);
+            setUsers(searchResults);
+        } catch (error) {
+            console.error('Error searching users:', error);
+            toast({
+                title: "Error",
+                description: "Failed to search users. Please try again.",
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadRoles = async () => {
+        try {
+            const response = await fetch('/api/roles');
+            if (response.ok) {
+                const rolesData = await response.json();
+                setRoles(rolesData);
+            }
+        } catch (error) {
+            console.error('Error loading roles:', error);
         }
     };
 
@@ -148,11 +194,23 @@ const AdminUsersPage: React.FC = () => {
     };
 
     return (
-        <div className="container mx-auto px-4 py-12 min-h-screen">
-            <div className="flex justify-between items-center mb-8">
+        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-12 min-h-screen">
+            {/* Mobile Back Button - Full Width */}
+            <div className="lg:hidden mb-4">
+                <Button 
+                    variant="outline" 
+                    onClick={() => setPage('adminDashboard')}
+                    className="flex items-center gap-2 w-full"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to Dashboard
+                </Button>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 lg:mb-8 gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold">Manage Users</h1>
-                    <nav className="text-sm text-muted-foreground">
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Manage Users</h1>
+                    <nav className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
                         <Button variant="link" className="p-0 h-auto" onClick={() => setPage('adminDashboard')}>
                             Admin
                         </Button>
@@ -160,17 +218,32 @@ const AdminUsersPage: React.FC = () => {
                         <span>Manage Users</span>
                     </nav>
                 </div>
-                <div className="flex gap-4">
-                    <Button variant="outline" onClick={() => setPage('adminDashboard')}>
-                        Back to Dashboard
-                    </Button>
-                    <Button variant="outline" onClick={loadUsers} disabled={loading}>
+                <div className="flex gap-2 sm:gap-4">
+                    <Button variant="outline" onClick={loadUsers} disabled={loading} className="flex-1 sm:flex-none">
                         {loading ? 'Refreshing...' : 'Refresh'}
                     </Button>
-                    <Button onClick={() => setShowCreateModal(true)}>
+                    <Button onClick={() => setShowCreateModal(true)} className="flex-1 sm:flex-none">
                         <UserPlus className="h-4 w-4 mr-2" />
-                        Add New User
+                        <span className="hidden sm:inline">Add New User</span>
+                        <span className="sm:hidden">Add User</span>
                     </Button>
+                </div>
+            </div>
+
+            {/* Search Bar */}
+            <div className="mb-6">
+                <div className="relative max-w-md">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                        type="text"
+                        placeholder="Search users by email or name..."
+                        value={searchQuery}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            searchUsers(e.target.value);
+                        }}
+                        className="pl-10 h-10 text-sm bg-gray-50 border-gray-200 focus:bg-white focus:border-green-400 focus:ring-green-400/20 transition-all duration-200 rounded-lg"
+                    />
                 </div>
             </div>
 
@@ -194,68 +267,130 @@ const AdminUsersPage: React.FC = () => {
                                 <p className="text-muted-foreground">No users are registered in the system.</p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left">
-                                    <thead className="border-b">
-                                        <tr>
-                                            <th className="p-4 font-semibold">#</th>
-                                            <th className="p-4 font-semibold">Name</th>
-                                            <th className="p-4 font-semibold">Email</th>
-                                            <th className="p-4 font-semibold">Role</th>
-                                            <th className="p-4 font-semibold">Address</th>
-                                            <th className="p-4 font-semibold">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {users.map((userData, index) => (
-                                            <tr key={userData.id} className="border-b hover:bg-muted/50">
-                                                <td className="p-4 font-semibold">#{index + 1}</td>
-                                                <td className="p-4 font-semibold">{userData.fullName}</td>
-                                                <td className="p-4">{userData.email}</td>
-                                                <td className="p-4">
-                                                    <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
-                                                        userData.role === 'Admin' 
-                                                            ? 'bg-red-100 text-red-800' 
-                                                            : 'bg-blue-100 text-blue-800'
-                                                    }`}>
-                                                        {userData.role === 'Admin' ? <Shield className="h-3 w-3" /> : <User className="h-3 w-3" />}
-                                                        {userData.role}
-                                                    </div>
-                                                </td>
-                                                <td className="p-4 max-w-xs truncate" title={userData.address}>
-                                                    {userData.address || 'No address provided'}
-                                                </td>
-                                                <td className="p-4">
-                                                    <div className="flex gap-2">
-                                                        <Button 
-                                                            size="sm" 
-                                                            variant="outline"
-                                                            onClick={() => {
-                                                                setSelectedUser(userData);
-                                                                setNewRole(userData.role);
-                                                                setShowRoleModal(true);
-                                                            }}
-                                                        >
-                                                            <Edit className="h-4 w-4 mr-1" />
-                                                            Edit Role
-                                                        </Button>
-                                                        {userData.id !== user?.id && (
+                            <>
+                                {/* Desktop Table View */}
+                                <div className="hidden lg:block overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead className="border-b">
+                                            <tr>
+                                                <th className="p-4 font-semibold">#</th>
+                                                <th className="p-4 font-semibold">Name</th>
+                                                <th className="p-4 font-semibold">Email</th>
+                                                <th className="p-4 font-semibold">Role</th>
+                                                <th className="p-4 font-semibold">Address</th>
+                                                <th className="p-4 font-semibold">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {users.map((userData, index) => (
+                                                <tr key={userData.id} className="border-b hover:bg-muted/50">
+                                                    <td className="p-4 font-semibold">#{index + 1}</td>
+                                                    <td className="p-4 font-semibold">{userData.fullName}</td>
+                                                    <td className="p-4">{userData.email}</td>
+                                                    <td className="p-4">
+                                                        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
+                                                            userData.role === 'Admin' 
+                                                                ? 'bg-red-100 text-red-800' 
+                                                                : 'bg-blue-100 text-blue-800'
+                                                        }`}>
+                                                            {userData.role === 'Admin' ? <Shield className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                                                            {userData.role}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4 max-w-xs truncate" title={userData.address}>
+                                                        {userData.address || 'No address provided'}
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="flex gap-2">
                                                             <Button 
                                                                 size="sm" 
-                                                                variant="destructive"
-                                                                onClick={() => handleDeleteUser(userData.id)}
+                                                                variant="outline"
+                                                                onClick={() => {
+                                                                    setSelectedUser(userData);
+                                                                    setNewRole(userData.role);
+                                                                    setShowRoleModal(true);
+                                                                }}
                                                             >
-                                                                <Trash2 className="h-4 w-4 mr-1" />
-                                                                Delete
+                                                                <Edit className="h-4 w-4 mr-1" />
+                                                                Edit Role
                                                             </Button>
-                                                        )}
+                                                            {userData.id !== user?.id && (
+                                                                <Button 
+                                                                    size="sm" 
+                                                                    variant="destructive"
+                                                                    onClick={() => handleDeleteUser(userData.id)}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4 mr-1" />
+                                                                    Delete
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* Mobile Card View */}
+                                <div className="lg:hidden space-y-3">
+                                    {users.map((userData, index) => (
+                                        <div key={userData.id} className="border rounded-lg p-3 bg-white">
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <span className="text-xs text-muted-foreground">#{index + 1}</span>
+                                                        <h3 className="font-semibold text-sm truncate">{userData.fullName}</h3>
                                                     </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                                    
+                                                    <p className="text-xs text-muted-foreground mb-2 truncate">{userData.email}</p>
+                                                    
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
+                                                            userData.role === 'Admin' 
+                                                                ? 'bg-red-100 text-red-800' 
+                                                                : 'bg-blue-100 text-blue-800'
+                                                        }`}>
+                                                            {userData.role === 'Admin' ? <Shield className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                                                            {userData.role}
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <p className="text-xs text-muted-foreground line-clamp-2" title={userData.address}>
+                                                        {userData.address || 'No address provided'}
+                                                    </p>
+                                                </div>
+                                                
+                                                {/* Actions */}
+                                                <div className="flex flex-col gap-1 ml-2">
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="outline"
+                                                        onClick={() => {
+                                                            setSelectedUser(userData);
+                                                            setNewRole(userData.role);
+                                                            setShowRoleModal(true);
+                                                        }}
+                                                        className="h-8 w-8 p-0"
+                                                    >
+                                                        <Edit className="h-3 w-3" />
+                                                    </Button>
+                                                    {userData.id !== user?.id && (
+                                                        <Button 
+                                                            size="sm" 
+                                                            variant="destructive"
+                                                            onClick={() => handleDeleteUser(userData.id)}
+                                                            className="h-8 w-8 p-0"
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
                         )}
                     </CardContent>
                 </Card>
@@ -274,15 +409,21 @@ const AdminUsersPage: React.FC = () => {
                         <CardContent className="space-y-4">
                             <div>
                                 <Label htmlFor="role">Role</Label>
-                                <select
-                                    id="role"
-                                    className="w-full px-3 py-2 border border-border rounded-md"
+                                <Select
                                     value={newRole}
-                                    onChange={(e) => setNewRole(e.target.value)}
+                                    onValueChange={setNewRole}
                                 >
-                                    <option value="User">User</option>
-                                    <option value="Admin">Admin</option>
-                                </select>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a role" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {roles.filter(role => role.isActive).map((role) => (
+                                            <SelectItem key={role.roleId} value={role.name}>
+                                                {role.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             <div className="flex gap-2 pt-4">
@@ -371,15 +512,21 @@ const AdminUsersPage: React.FC = () => {
                             
                             <div>
                                 <Label htmlFor="createRole">Role</Label>
-                                <select
-                                    id="createRole"
-                                    className="w-full px-3 py-2 border border-border rounded-md"
+                                <Select
                                     value={newUserData.role}
-                                    onChange={(e) => setNewUserData(prev => ({ ...prev, role: e.target.value }))}
+                                    onValueChange={(value) => setNewUserData(prev => ({ ...prev, role: value }))}
                                 >
-                                    <option value="User">User</option>
-                                    <option value="Admin">Admin</option>
-                                </select>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a role" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {roles.filter(role => role.isActive).map((role) => (
+                                            <SelectItem key={role.roleId} value={role.name}>
+                                                {role.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             <div className="flex gap-2 pt-4">

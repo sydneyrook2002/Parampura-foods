@@ -41,11 +41,11 @@ export interface ApiCartItem {
 }
 
 // Convert API types to frontend types
-export function convertApiFood(apiFood: ApiFood): ApiCartItem {
+export function convertApiFood(apiFood: any): ApiCartItem {
   return {
     foodId: apiFood.foodId,
     name: apiFood.name,
-    price: apiFood.price,
+    price: apiFood.salePrice || apiFood.mrp, // Use sale price if available, otherwise MRP
     imageUrl: apiFood.imageUrl,
     categoryId: apiFood.categoryId,
     categoryName: apiFood.categoryName,

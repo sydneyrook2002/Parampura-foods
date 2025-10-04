@@ -464,12 +464,13 @@ All colors MUST be HSL.
     position: relative;
     width: 100%;
     height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile */
     overflow: hidden;
   }
 
   @media (max-width: 640px) {
     .responsive-video-container {
-      height: 70vh;
+      height: 100vh;
     }
   }
 
@@ -514,7 +515,7 @@ All colors MUST be HSL.
 
   /* Responsive card sizing */
   .responsive-card {
-    padding: 1rem;
+    padding: 0.5rem;
     border-radius: 0.75rem;
   }
 
@@ -548,7 +549,7 @@ All colors MUST be HSL.
 
   @media (max-width: 640px) {
     .responsive-image {
-      height: 200px;
+      height: 80px;
     }
   }
 
@@ -1006,6 +1007,23 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    /* Mobile browser UI handling */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
+  }
+
+  /* Mobile browser address bar handling */
+  @media (max-width: 640px) {
+    html {
+      height: 100%;
+      height: 100dvh;
+    }
+    
+    body {
+      height: 100%;
+      height: 100dvh;
+      overflow-x: hidden;
+    }
   }
 }
 

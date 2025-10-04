@@ -6,7 +6,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useToast } from '../ui/use-toast';
 import { apiClient, CategoryDto, CreateCategoryDto } from '../../services/apiClient';
-import { FolderOpen, Plus, Edit, Trash2 } from 'lucide-react';
+import { FolderOpen, Plus, Edit, Trash2, ArrowLeft } from 'lucide-react';
 
 const AdminCategoriesPage: React.FC = () => {
     const { categories, setPage, loadCategories } = useApiCart();
@@ -124,11 +124,23 @@ const AdminCategoriesPage: React.FC = () => {
     };
 
     return (
-        <div className="container mx-auto px-4 py-12 min-h-screen">
-            <div className="flex justify-between items-center mb-8">
+        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-12 min-h-screen">
+            {/* Mobile Back Button - Full Width */}
+            <div className="lg:hidden mb-4">
+                <Button 
+                    variant="outline" 
+                    onClick={() => setPage('adminDashboard')}
+                    className="flex items-center gap-2 w-full"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to Dashboard
+                </Button>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 lg:mb-8 gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold">Manage Categories</h1>
-                    <nav className="text-sm text-muted-foreground">
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Manage Categories</h1>
+                    <nav className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
                         <Button variant="link" className="p-0 h-auto" onClick={() => setPage('adminDashboard')}>
                             Admin
                         </Button>
@@ -136,23 +148,21 @@ const AdminCategoriesPage: React.FC = () => {
                         <span>Manage Categories</span>
                     </nav>
                 </div>
-                <div className="flex gap-4">
-                    <Button variant="outline" onClick={() => setPage('adminDashboard')}>
-                        Back to Dashboard
-                    </Button>
-                    <Button variant="outline" onClick={refreshCategories} disabled={loading}>
+                <div className="flex gap-2 sm:gap-4">
+                    <Button variant="outline" onClick={refreshCategories} disabled={loading} className="flex-1 sm:flex-none">
                         {loading ? 'Refreshing...' : 'Refresh'}
                     </Button>
-                    <Button onClick={() => setShowCreateModal(true)}>
+                    <Button onClick={() => setShowCreateModal(true)} className="flex-1 sm:flex-none">
                         <Plus className="h-4 w-4 mr-2" />
-                        Add New Category
+                        <span className="hidden sm:inline">Add New Category</span>
+                        <span className="sm:hidden">Add Category</span>
                     </Button>
                 </div>
             </div>
 
             <Card>
-                <CardHeader>
-                    <CardTitle>All Categories ({categories.length})</CardTitle>
+                <CardHeader className="pb-3 sm:pb-6">
+                    <CardTitle className="text-lg sm:text-xl">All Categories ({categories.length})</CardTitle>
                 </CardHeader>
                 <CardContent>
                     {categories.length === 0 ? (

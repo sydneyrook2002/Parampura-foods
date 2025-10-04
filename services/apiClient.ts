@@ -1,6 +1,25 @@
 // API Client for Parampara Foods Backend Integration
-const API_BASE_URL = 'http://localhost:5123/api';
-const STATIC_BASE_URL = 'http://localhost:5123';
+// Standard ports: Frontend 3000, Backend 5123
+const getApiBaseUrl = () => {
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:5123/api';
+  } else {
+    return `http://${hostname}:5123/api`;
+  }
+};
+
+const getStaticBaseUrl = () => {
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:5123';
+  } else {
+    return `http://${hostname}:5123`;
+  }
+};
+
+const API_BASE_URL = getApiBaseUrl();
+const STATIC_BASE_URL = getStaticBaseUrl();
 
 // Types matching backend DTOs
 export interface FoodDto {
@@ -89,6 +108,49 @@ export interface AuthResponse {
   expiration: string;
 }
 
+export interface GoogleAuthDto {
+  googleId: string;
+  email: string;
+  name: string;
+  picture: string;
+}
+
+export interface GoogleAuthResponse {
+  token: string;
+  expiration: string;
+  userId: string;
+  email: string;
+  fullName: string;
+  role: string;
+  authProvider: string;
+}
+
+export interface PhoneAuthRequestDto {
+  phoneNumber: string;
+}
+
+export interface PhoneAuthVerifyDto {
+  phoneNumber: string;
+  verificationCode: string;
+}
+
+export interface PhoneAuthResponse {
+  token: string;
+  expiration: string;
+  userId: string;
+  phoneNumber: string;
+  fullName: string;
+  role: string;
+  authProvider: string;
+  isNewUser: boolean;
+}
+
+export interface PhoneVerificationResponse {
+  success: boolean;
+  message: string;
+  sessionId: string;
+}
+
 export interface OrderCreateDto {
   deliveryAddress: string;
   customerNotes?: string;
@@ -148,6 +210,28 @@ export interface CreateUserDto {
   password: string;
   address: string;
   role: string;
+}
+
+export interface RoleDto {
+  roleId: number;
+  name: string;
+  description: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  userCount: number;
+}
+
+export interface CreateRoleDto {
+  name: string;
+  description: string;
+  isActive: boolean;
+}
+
+export interface UpdateRoleDto {
+  name: string;
+  description: string;
+  isActive: boolean;
 }
 
 export interface FeedbackDto {
@@ -366,6 +450,53 @@ class ApiClient {
 
   isAuthenticated(): boolean {
     return !!this.token;
+  }
+
+  // Google OAuth Methods
+  async googleAuth(googleData: GoogleAuthDto): Promise<GoogleAuthResponse> {
+    const response = await fetch(`${this.baseUrl}/auth/google`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(googleData),
+    });
+
+    const authResponse = await this.handleResponse<GoogleAuthResponse>(response);
+    
+    // Store token
+    this.token = authResponse.token;
+    localStorage.setItem('authToken', authResponse.token);
+    
+    return authResponse;
+  }
+
+  // Phone Authentication Methods
+  async sendPhoneVerificationCode(phoneNumber: string): Promise<PhoneVerificationResponse> {
+    const response = await fetch(`${this.baseUrl}/auth/phone/send-code`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ phoneNumber }),
+    });
+
+    return this.handleResponse<PhoneVerificationResponse>(response);
+  }
+
+  async verifyPhoneCode(phoneNumber: string, verificationCode: string, sessionId: string): Promise<PhoneAuthResponse> {
+    const response = await fetch(`${this.baseUrl}/auth/phone/verify`, {
+      method: 'POST',
+      headers: {
+        ...this.getHeaders(),
+        'X-Session-Id': sessionId,
+      },
+      body: JSON.stringify({ phoneNumber, verificationCode }),
+    });
+
+    const authResponse = await this.handleResponse<PhoneAuthResponse>(response);
+    
+    // Store token
+    this.token = authResponse.token;
+    localStorage.setItem('authToken', authResponse.token);
+    
+    return authResponse;
   }
 
   // Foods API Methods
@@ -762,6 +893,87 @@ class ApiClient {
     if (!response.ok) {
       throw new Error(`Failed to toggle offer: ${response.statusText}`);
     }
+  }
+
+  // Roles API Methods
+  async getRoles(): Promise<RoleDto[]> {
+    const response = await fetch(`${this.baseUrl}/roles`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<RoleDto[]>(response);
+  }
+
+  async getActiveRoles(): Promise<RoleDto[]> {
+    const response = await fetch(`${this.baseUrl}/roles/active`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<RoleDto[]>(response);
+  }
+
+  async getRole(id: number): Promise<RoleDto> {
+    const response = await fetch(`${this.baseUrl}/roles/${id}`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<RoleDto>(response);
+  }
+
+  async createRole(roleData: CreateRoleDto): Promise<RoleDto> {
+    const response = await fetch(`${this.baseUrl}/roles`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(roleData),
+    });
+    return this.handleResponse<RoleDto>(response);
+  }
+
+  async updateRole(id: number, roleData: UpdateRoleDto): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/roles/${id}`, {
+      method: 'PUT',
+      headers: this.getHeaders(),
+      body: JSON.stringify(roleData),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to update role: ${response.statusText}`);
+    }
+  }
+
+  async deleteRole(id: number): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/roles/${id}`, {
+      method: 'DELETE',
+      headers: this.getHeaders(),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to delete role: ${response.statusText}`);
+    }
+  }
+
+  // Search API Methods
+  async searchFoods(query: string, limit: number = 10): Promise<FoodDto[]> {
+    const response = await fetch(`${this.baseUrl}/foods/search?q=${encodeURIComponent(query)}&limit=${limit}`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<FoodDto[]>(response);
+  }
+
+  async getFoodSuggestions(query: string, limit: number = 5): Promise<string[]> {
+    const response = await fetch(`${this.baseUrl}/foods/suggestions?q=${encodeURIComponent(query)}&limit=${limit}`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<string[]>(response);
+  }
+
+  async searchUsers(query: string, limit: number = 10): Promise<UserDto[]> {
+    const response = await fetch(`${this.baseUrl}/users/search?q=${encodeURIComponent(query)}&limit=${limit}`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<UserDto[]>(response);
+  }
+
+  async getUserSuggestions(query: string, limit: number = 5): Promise<string[]> {
+    const response = await fetch(`${this.baseUrl}/users/suggestions?q=${encodeURIComponent(query)}&limit=${limit}`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<string[]>(response);
   }
 }
 

@@ -6,7 +6,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useToast } from '../ui/use-toast';
 import { apiClient, CreateFoodDto, UpdateFoodDto, FoodDto } from '../../services/apiClient';
-import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, ArrowLeft } from 'lucide-react';
 
 const AdminProductsPage: React.FC = () => {
     const { foods, categories, setPage, loading, loadFoods } = useApiCart();
@@ -138,11 +138,23 @@ const AdminProductsPage: React.FC = () => {
     };
 
     return (
-        <div className="container mx-auto px-4 py-12 min-h-screen">
-            <div className="flex justify-between items-center mb-8">
+        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-12 min-h-screen">
+            {/* Mobile Back Button - Full Width */}
+            <div className="lg:hidden mb-4">
+                <Button 
+                    variant="outline" 
+                            onClick={() => setPage('adminDashboard')}
+                    className="flex items-center gap-2 w-full"
+                        >
+                    <ArrowLeft className="h-4 w-4" />
+                            Back to Dashboard
+                </Button>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 lg:mb-8 gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold">Manage Products</h1>
-                    <nav className="text-sm text-muted-foreground">
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Manage Products</h1>
+                    <nav className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
                         <Button variant="link" className="p-0 h-auto" onClick={() => setPage('adminDashboard')}>
                             Admin
                         </Button>
@@ -150,20 +162,18 @@ const AdminProductsPage: React.FC = () => {
                         <span>Manage Products</span>
                     </nav>
                 </div>
-                <div className="flex gap-4">
-                    <Button variant="outline" onClick={() => setPage('adminDashboard')}>
-                        Back to Dashboard
-                    </Button>
-                    <Button onClick={() => setShowAddForm(true)}>
+                <div className="flex gap-2 sm:gap-4">
+                    <Button onClick={() => setShowAddForm(true)} className="flex-1 sm:flex-none">
                         <Plus className="h-4 w-4 mr-2" />
-                        Add New Product
+                        <span className="hidden sm:inline">Add New Product</span>
+                        <span className="sm:hidden">Add Product</span>
                     </Button>
+                    </div>
                 </div>
-            </div>
 
             {/* Add/Edit Form */}
             {showAddForm && (
-                <Card className="mb-8">
+                <Card className="mb-4 sm:mb-6 lg:mb-8">
                     <CardHeader>
                         <CardTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</CardTitle>
                     </CardHeader>
@@ -342,12 +352,13 @@ const AdminProductsPage: React.FC = () => {
                 </div>
             ) : (
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Products ({foods.length})</CardTitle>
+                    <CardHeader className="pb-3 sm:pb-6">
+                        <CardTitle className="text-lg sm:text-xl">Products ({foods.length})</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
+                    <CardContent className="p-3 sm:p-6">
+                        {/* Desktop Table View */}
+                        <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full text-left">
                                 <thead className="border-b">
                                     <tr>
                                         <th className="p-4 font-semibold">Image</th>
@@ -358,9 +369,9 @@ const AdminProductsPage: React.FC = () => {
                                         <th className="p-4 font-semibold">Stock</th>
                                         <th className="p-4 font-semibold">Status</th>
                                         <th className="p-4 font-semibold">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                            </tr>
+                        </thead>
+                        <tbody>
                                     {foods.map(product => (
                                         <tr key={product.foodId} className="border-b hover:bg-muted/50">
                                             <td className="p-4">
@@ -394,12 +405,12 @@ const AdminProductsPage: React.FC = () => {
                                                     <span className="text-muted-foreground">-</span>
                                                 )}
                                             </td>
-                                            <td className="p-4">
+                                    <td className="p-4">
                                                 <span className={product.isLowStock ? 'text-red-600 font-semibold' : ''}>
                                                     {product.stockQuantity}
                                                 </span>
-                                            </td>
-                                            <td className="p-4">
+                                    </td>
+                                    <td className="p-4">
                                                 <div className="flex flex-col gap-1">
                                                     {product.isAvailable ? (
                                                         <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
@@ -420,10 +431,10 @@ const AdminProductsPage: React.FC = () => {
                                                             On Sale
                                                         </span>
                                                     )}
-                                                </div>
-                                            </td>
-                                            <td className="p-4">
-                                                <div className="flex gap-2">
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex gap-2">
                                                     <Button 
                                                         size="sm" 
                                                         variant="outline"
@@ -438,12 +449,107 @@ const AdminProductsPage: React.FC = () => {
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                        {/* Mobile Card View - Bigger Cards */}
+                        <div className="lg:hidden space-y-3">
+                            {foods.map(product => (
+                                <div key={product.foodId} className="border rounded-xl p-3 bg-white shadow-sm">
+                                    {/* Header with Image and Basic Info */}
+                                    <div className="flex items-start gap-4 mb-3">
+                                        {/* Product Image - Bigger */}
+                                        <div className="flex-shrink-0">
+                                            {product.imageUrl ? (
+                                                <img 
+                                                    src={product.imageUrl} 
+                                                    alt={product.name} 
+                                                    className="w-20 h-20 object-cover rounded-lg"
+                                                />
+                                            ) : (
+                                                <div className="w-20 h-20 bg-gradient-to-br from-gray-200 to-gray-400 rounded-lg flex items-center justify-center">
+                                                    <span className="text-gray-600 text-lg font-medium">{product.name.charAt(0)}</span>
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                            )}
+                                        </div>
+
+                                        {/* Product Basic Info */}
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="font-bold text-base mb-1 line-clamp-2">{product.name}</h3>
+                                            <p className="text-sm text-muted-foreground mb-1">{product.brand}</p>
+                                            <p className="text-sm text-muted-foreground">{product.categoryName}</p>
+                                        </div>
+                                        
+                                        {/* Actions */}
+                                        <div className="flex flex-col gap-2">
+                                            <Button 
+                                                size="sm" 
+                                                variant="outline"
+                                                onClick={() => startEdit(product)}
+                                                className="h-9 w-9 p-0"
+                                            >
+                                                <Edit className="h-4 w-4" />
+                                            </Button>
+                                            <Button 
+                                                size="sm" 
+                                                variant="destructive"
+                                                onClick={() => handleDelete(product.foodId, product.name)}
+                                                className="h-9 w-9 p-0"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    {/* Pricing Section */}
+                                    <div className="mb-3 p-3 bg-gray-50 rounded-lg">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-lg font-bold">₹{product.mrp.toFixed(2)}</span>
+                                                {product.salePrice && (
+                                                    <>
+                                                        <span className="text-sm text-green-600 font-semibold">₹{product.salePrice.toFixed(2)}</span>
+                                                        <span className="text-xs text-red-600 bg-red-100 px-2 py-1 rounded-full font-medium">
+                                                            {product.discountPercentage}% OFF
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </div>
+                                            <span className={`text-sm font-medium ${product.isLowStock ? 'text-red-600' : 'text-muted-foreground'}`}>
+                                                Stock: {product.stockQuantity}
+                                            </span>
+                </div>
+            </div>
+
+                                    {/* Status Tags - Better Layout */}
+                                    <div className="flex flex-wrap gap-2">
+                                        {product.isAvailable ? (
+                                            <span className="bg-green-100 text-green-800 text-sm px-3 py-1.5 rounded-full font-medium">
+                                                Available
+                                            </span>
+                                        ) : (
+                                            <span className="bg-red-100 text-red-800 text-sm px-3 py-1.5 rounded-full font-medium">
+                                                Unavailable
+                                            </span>
+                                        )}
+                                        {product.isOrganic && (
+                                            <span className="bg-blue-100 text-blue-800 text-sm px-3 py-1.5 rounded-full font-medium">
+                                                Organic
+                                            </span>
+                                        )}
+                                        {product.isOnSale && (
+                                            <span className="bg-orange-100 text-orange-800 text-sm px-3 py-1.5 rounded-full font-medium">
+                                                On Sale
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </CardContent>
                 </Card>

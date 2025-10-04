@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { apiClient, FoodDto, CategoryDto, AuthResponse, OrderCreateDto, WishlistDto } from '../services/apiClient';
+import { apiClient, FoodDto, CategoryDto, AuthResponse, OrderCreateDto, WishlistDto, GoogleAuthDto, GoogleAuthResponse, PhoneAuthResponse, PhoneVerificationResponse } from '../services/apiClient';
 import { ApiCartItem, ApiUser, convertApiFood } from '../types/api';
 
 interface ApiCartContextType {
@@ -29,7 +29,7 @@ interface ApiCartContextType {
   // API Methods
   loadFoods: (categoryId?: number) => Promise<void>;
   loadCategories: () => Promise<void>;
-  searchFoods: (query: string) => void;
+  searchFoods: (query: string) => Promise<void>;
   
   // Cart Methods
   addToCart: (food: FoodDto) => void;
@@ -44,7 +44,10 @@ interface ApiCartContextType {
   
   // Auth Methods
   login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string, address: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string, address?: string) => Promise<boolean>;
+  googleLogin: (googleData: GoogleAuthDto) => Promise<boolean>;
+  sendPhoneVerificationCode: (phoneNumber: string) => Promise<PhoneVerificationResponse | null>;
+  verifyPhoneCode: (phoneNumber: string, verificationCode: string, sessionId: string) => Promise<boolean>;
   logout: () => void;
   
   // Order Methods
@@ -74,9 +77,116 @@ export const ApiCartProvider: React.FC<{ children: ReactNode }> = ({ children })
   
   const [page, setPageState] = useState('home');
   
-  // Custom setPage function that scrolls to top
+  // Convert camelCase to kebab-case for clean URLs
+  const toKebabCase = (str: string) => {
+    return str.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+  };
+
+  // Convert kebab-case back to camelCase for internal state
+  const toCamelCase = (str: string) => {
+    return str.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+  };
+
+  // Initialize page from URL path on mount
+  useEffect(() => {
+    const path = window.location.pathname.slice(1); // Remove the / symbol
+    if (path && path !== '') {
+      // Handle product URLs like /product/organic-tomatoes
+      if (path.startsWith('product/')) {
+        const productSlug = path.replace('product/', '');
+        // Find product by slug
+        const product = foods.find(f => {
+          const slug = f.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+          return slug === productSlug;
+        });
+        if (product) {
+          setSelectedProduct(product);
+          setPageState('productDetail');
+        } else if (foods.length > 0) {
+          // Foods are loaded but product not found, redirect to home
+          setPageState('home');
+          window.history.replaceState({}, '', '/');
+        }
+        // If foods are not loaded yet, wait for them to load
+        return;
+      }
+
+      const camelCasePage = toCamelCase(path);
+      // Validate that the page exists in our routing system
+      const validPages = ['home', 'cart', 'login', 'register', 'category', 'productDetail', 'checkout', 'success', 'about', 'contact', 'searchResults', 'wishlist', 'adminDashboard', 'adminProducts', 'adminUsers', 'adminRoles', 'adminOrders', 'adminAnalytics', 'adminReviews', 'adminCategories', 'account'];
+      if (validPages.includes(camelCasePage)) {
+        setPageState(camelCasePage);
+      } else {
+        // If invalid page, redirect to home
+        setPageState('home');
+        window.history.replaceState({}, '', '/');
+      }
+    }
+  }, []); // Run only on mount
+
+  // Handle product URLs when foods are loaded
+  useEffect(() => {
+    const path = window.location.pathname.slice(1);
+    if (path && path.startsWith('product/') && foods.length > 0) {
+      const productSlug = path.replace('product/', '');
+      const product = foods.find(f => {
+        const slug = f.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        return slug === productSlug;
+      });
+      if (product) {
+        setSelectedProduct(product);
+        setPageState('productDetail');
+      } else {
+        // Product not found, redirect to home
+        setPageState('home');
+        window.history.replaceState({}, '', '/');
+      }
+    }
+  }, [foods]); // Run when foods are loaded
+  
+  // Listen for popstate changes (browser back/forward)
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname.slice(1); // Remove the / symbol
+      if (path && path !== '') {
+        // Handle product URLs like /product/organic-tomatoes
+        if (path.startsWith('product/')) {
+          const productSlug = path.replace('product/', '');
+          // Find product by slug
+          const product = foods.find(f => {
+            const slug = f.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+            return slug === productSlug;
+          });
+          if (product) {
+            setSelectedProduct(product);
+            setPageState('productDetail');
+          } else {
+            setPageState('home');
+          }
+          return;
+        }
+
+        const camelCasePage = toCamelCase(path);
+        setPageState(camelCasePage);
+      } else {
+        setPageState('home');
+      }
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [foods]); // Add foods dependency
+  
+  // Custom setPage function that scrolls to top and updates URL
   const setPage = (newPage: string) => {
     setPageState(newPage);
+    // Only update URL if we're not already on a product page with a custom URL
+    if (newPage !== 'productDetail' || !window.location.pathname.startsWith('/product/')) {
+      // Update URL path for proper routing (clean URLs)
+      const kebabCasePage = toKebabCase(newPage);
+      const newPath = kebabCasePage === 'home' ? '/' : `/${kebabCasePage}`;
+      window.history.pushState({}, '', newPath);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -147,19 +257,23 @@ export const ApiCartProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const searchFoods = (query: string) => {
+  const searchFoods = async (query: string) => {
     if (!query.trim()) {
       setSearchResults([]);
       return;
     }
     
-    const lowercaseQuery = query.toLowerCase();
-    const results = foods.filter(food => 
-      food.name.toLowerCase().includes(lowercaseQuery) ||
-      food.description.toLowerCase().includes(lowercaseQuery) ||
-      food.categoryName.toLowerCase().includes(lowercaseQuery)
-    );
-    setSearchResults(results);
+    try {
+      setLoading(true);
+      const results = await apiClient.searchFoods(query, 20);
+      setSearchResults(results);
+    } catch (error) {
+      console.error('Error searching foods:', error);
+      setError('Failed to search products');
+      setSearchResults([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Cart Methods
@@ -283,7 +397,7 @@ export const ApiCartProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const register = async (name: string, email: string, password: string, address: string): Promise<boolean> => {
+  const register = async (name: string, email: string, password: string, address?: string): Promise<boolean> => {
     try {
       setLoading(true);
       setError(null);
@@ -292,7 +406,7 @@ export const ApiCartProvider: React.FC<{ children: ReactNode }> = ({ children })
         email,
         password,
         fullName: name,
-        address,
+        address: address || '',
         role: 'User'
       });
       
@@ -309,6 +423,86 @@ export const ApiCartProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const clearError = () => {
     setError(null);
+  };
+
+  const googleLogin = async (googleData: GoogleAuthDto): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const authResponse = await apiClient.googleAuth(googleData);
+      
+      // Set user state
+      const newUser = {
+        id: authResponse.userId,
+        name: authResponse.fullName,
+        fullName: authResponse.fullName,
+        email: authResponse.email,
+        role: authResponse.role
+      };
+      
+      setUser(newUser);
+      setIsAuthenticated(true);
+      
+      // Load user's wishlist after successful login
+      await loadWishlist();
+      
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Google login failed');
+      console.error('Google login error:', err);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendPhoneVerificationCode = async (phoneNumber: string): Promise<PhoneVerificationResponse | null> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await apiClient.sendPhoneVerificationCode(phoneNumber);
+      return response;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send verification code');
+      console.error('Phone verification error:', err);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyPhoneCode = async (phoneNumber: string, verificationCode: string, sessionId: string): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const authResponse = await apiClient.verifyPhoneCode(phoneNumber, verificationCode, sessionId);
+      
+      // Set user state
+      const newUser = {
+        id: authResponse.userId,
+        name: authResponse.fullName,
+        fullName: authResponse.fullName,
+        email: authResponse.phoneNumber, // Use phone number as email for phone auth
+        role: authResponse.role
+      };
+      
+      setUser(newUser);
+      setIsAuthenticated(true);
+      
+      // Load user's wishlist after successful login
+      await loadWishlist();
+      
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Phone verification failed');
+      console.error('Phone verification error:', err);
+      return false;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const logout = () => {
@@ -379,15 +573,19 @@ export const ApiCartProvider: React.FC<{ children: ReactNode }> = ({ children })
     const product = foods.find(f => f.foodId === foodId);
     if (product) {
       setSelectedProduct(product);
+      // Create URL with product name
+      const productSlug = product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
       setPage('productDetail');
+      // Update URL with product name
+      window.history.pushState({}, '', `/product/${productSlug}`);
       // Scroll to top when navigating to product detail page
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
-  const performSearch = (query: string) => {
+  const performSearch = async (query: string) => {
     setSearchQuery(query);
-    searchFoods(query);
+    await searchFoods(query);
     setPage('searchResults');
     // Scroll to top when navigating to search results page
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -436,6 +634,9 @@ export const ApiCartProvider: React.FC<{ children: ReactNode }> = ({ children })
     // Auth Methods
     login,
     register,
+    googleLogin,
+    sendPhoneVerificationCode,
+    verifyPhoneCode,
     logout,
     
     // Order Methods

@@ -38,12 +38,15 @@ const HomePage = () => {
           Your browser does not support the video tag.
         </video>
         
+        {/* Dark overlay for better text readability */}
+        <div className="absolute inset-0 bg-black/40 z-5"></div>
+        
         {/* Text Overlay - Fully Responsive */}
         <div className="absolute inset-0 flex items-center justify-center z-10 responsive-container">
           <div className="text-center text-white animate-fade-in max-w-6xl mx-auto">
             <h1 className="hero-title font-bold mb-4 sm:mb-6 leading-tight animate-slide-up">
               Fresh & Organic Foods
-              <span className="block text-green-300 animate-glow hero-subtitle">Delivered to Your Door</span>
+              <span className="block text-white hero-subtitle">Delivered to Your Door</span>
             </h1>
             <p className="hero-description mb-6 sm:mb-8 text-gray-100 animate-slide-up max-w-4xl mx-auto leading-relaxed" style={{ animationDelay: '0.2s' }}>
               Experience the finest selection of organic produce, sourced directly from local farms with love and care.

@@ -12,9 +12,16 @@ interface ProductGridProps {
 
 const ProductGrid: React.FC<ProductGridProps> = ({ title, subtitle, products }) => {
   return (
-    <div className="container mx-auto px-4">
+    <div className="container mx-auto px-3 sm:px-4 lg:px-6">
       <SectionTitle title={title} subtitle={subtitle} />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div 
+        className="grid gap-3 sm:gap-4 lg:gap-6"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: '0.75rem'
+        }}
+      >
         {products.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}

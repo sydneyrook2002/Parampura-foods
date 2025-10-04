@@ -3,8 +3,8 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import HomePage from '../components/HomePage';
 import CartPage from '../components/CartPage';
-import LoginPage from '../components/LoginPage';
-import RegisterPage from '../components/RegisterPage';
+import LoginPage from '../components/EnhancedLoginPage';
+import RegisterPage from '../components/EnhancedRegisterPage';
 import CategoryPage from '../components/CategoryPage';
 import ApiProductDetailPage from '../components/ApiProductDetailPage';
 import CheckoutPage from '../components/CheckoutPage';
@@ -14,6 +14,7 @@ import ContactPage from '../components/ContactPage';
 import AdminDashboard from '../components/admin/AdminDashboard';
 import AdminProductsPage from '../components/admin/AdminProductsPage';
 import AdminUsersPage from '../components/admin/AdminUsersPage';
+import AdminRolesPage from '../components/admin/AdminRolesPage';
 import AdminOrdersPage from '../components/admin/AdminOrdersPage';
 import AdminAnalyticsPage from '../components/admin/AdminAnalyticsPage';
 import AdminReviewsPage from '../components/admin/AdminReviewsPage';
@@ -55,6 +56,8 @@ const Index = () => {
         return <AdminProductsPage />;
       case 'adminUsers':
         return <AdminUsersPage />;
+      case 'adminRoles':
+        return <AdminRolesPage />;
       case 'adminOrders':
         return <AdminOrdersPage />;
       case 'adminAnalytics':

@@ -6,14 +6,14 @@ import { apiClient, DashboardStatsDto } from '../../services/apiClient';
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: string; }> = ({ title, value, icon }) => (
     <Card>
-        <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-                <div className="bg-primary/10 p-3 rounded-full">
-                    <span className="text-2xl">{icon}</span>
+        <CardContent className="p-3 sm:p-4 lg:p-6">
+            <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+                <div className="bg-primary/10 p-2 sm:p-3 rounded-full">
+                    <span className="text-lg sm:text-xl lg:text-2xl">{icon}</span>
                 </div>
-                <div>
-                    <p className="text-sm text-muted-foreground">{title}</p>
-                    <p className="text-2xl font-bold">{value}</p>
+                <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">{title}</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold">{value}</p>
                 </div>
             </div>
         </CardContent>
@@ -25,12 +25,12 @@ const NavCard: React.FC<{ title: string; description: string; icon: string; page
         className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary"
         onClick={() => onClick(page)}
     >
-        <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-                <div className="text-3xl">{icon}</div>
-                <div>
-                    <h2 className="text-xl font-bold">{title}</h2>
-                    <p className="text-muted-foreground">{description}</p>
+        <CardContent className="p-3 sm:p-4 lg:p-6">
+            <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+                <div className="text-xl sm:text-2xl lg:text-3xl">{icon}</div>
+                <div className="min-w-0 flex-1">
+                    <h2 className="text-sm sm:text-base lg:text-xl font-bold truncate">{title}</h2>
+                    <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1">{description}</p>
                 </div>
             </div>
         </CardContent>
@@ -62,14 +62,14 @@ const AdminDashboard: React.FC = () => {
     };
 
     return (
-        <div className="container mx-auto px-4 py-12 min-h-screen">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
-                <p className="text-muted-foreground">Welcome, {user?.fullName}! Manage your store from here.</p>
+        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-12 min-h-screen">
+            <div className="mb-4 sm:mb-6 lg:mb-8">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2">Admin Dashboard</h1>
+                <p className="text-sm sm:text-base text-muted-foreground">Welcome, {user?.fullName}! Manage your store from here.</p>
             </div>
             
-            {/* Dashboard Statistics */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            {/* Dashboard Statistics - Mobile Optimized */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 lg:gap-6 mb-6 sm:mb-8 lg:mb-12">
                 {loading ? (
                     <>
                         <StatCard title="Loading..." value="..." icon="⏳" />
@@ -102,29 +102,32 @@ const AdminDashboard: React.FC = () => {
                 ) : null}
             </div>
 
-            {/* Navigation Section */}
+            {/* Navigation Section - Mobile Optimized */}
             <div>
-                <h2 className="text-2xl font-bold mb-6">Management Tools</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-3 sm:mb-4 lg:mb-6">Management Tools</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
                     <NavCard title="Manage Products" description="Add, edit, or delete products" icon="🛍️" page="adminProducts" onClick={setPage} />
                     <NavCard title="Manage Categories" description="Organize products into categories" icon="📂" page="adminCategories" onClick={setPage} />
                     <NavCard title="Manage Users" description="View and manage user roles" icon="👥" page="adminUsers" onClick={setPage} />
+                    <NavCard title="Manage Roles" description="Create and manage user roles" icon="🛡️" page="adminRoles" onClick={setPage} />
                     <NavCard title="Manage Orders" description="View and track all customer orders" icon="📋" page="adminOrders" onClick={setPage} />
                     <NavCard title="Analytics" description="View detailed sales reports" icon="📊" page="adminAnalytics" onClick={setPage} />
                     <NavCard title="Manage Reviews" description="View and respond to customer feedback" icon="⭐" page="adminReviews" onClick={setPage} />
                 </div>
             </div>
             
-            <div className="mt-8 flex gap-4">
+            <div className="mt-4 sm:mt-6 lg:mt-8 flex flex-col sm:flex-row gap-2 sm:gap-4">
                 <Button 
                     variant="outline" 
                     onClick={() => setPage('home')}
+                    className="w-full sm:w-auto"
                 >
                     Back to Store
                 </Button>
                 <Button 
                     variant="destructive" 
                     onClick={logout}
+                    className="w-full sm:w-auto"
                 >
                     Logout
                 </Button>
