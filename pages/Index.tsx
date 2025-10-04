@@ -72,9 +72,9 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-modern">
       <Header />
-      <main>{renderPage()}</main>
+      <main className="w-full overflow-x-hidden">{renderPage()}</main>
       <Footer />
     </div>
   );
